@@ -71,20 +71,20 @@ Array<float, 8, 5> embs0, embs1;
 Matrix<float, 22, 19> in_h1;
 Matrix<float, 20, 22> h1_h2;
 Matrix<float, 49, 20> h2_out;
-Array<float, 22, 1> b1, BN_gamma_1, BN_beta_1, BN_rm_1, BN_rv_1;
-Array<float, 20, 1> b2, BN_gamma_2, BN_beta_2, BN_rm_2, BN_rv_2;
+Array<float, 22, 1> b1, BN_gamma_1, BN_beta_1, BN_rm_1, BN_rv_1, BN_rv_gamma_1;
+Array<float, 20, 1> b2, BN_gamma_2, BN_beta_2, BN_rm_2, BN_rv_2, BN_rv_gamma_2;
 Array<float, 49, 1> bout;
-Array<float, 9, 1> IN_errors, BN_gamma_in, BN_beta_in, BN_rm_in, BN_rv_in, mean, stdev;
+Array<float, 9, 1> IN_errors, BN_gamma_in, BN_beta_in, BN_rm_in, BN_rv_in, BN_rv_gamma_in, mean, stdev;
 
 Array<half, 22, 1> X1; Array<half, 20, 1> X2; Array<half, 49, 1> OUT;
 Array<half, 19, 1> h_IN;
 Matrix<half, 22, 19> h_in_h1;
 Matrix<half, 20, 22> h_h1_h2;
 Matrix<half, 49, 20> h_h2_out;
-Array<half, 22, 1> h_b1, h_BN_gamma_1, h_BN_beta_1, h_BN_rm_1, h_BN_rv_1;
-Array<half, 20, 1> h_b2, h_BN_gamma_2, h_BN_beta_2, h_BN_rm_2, h_BN_rv_2;
+Array<half, 22, 1> h_b1, h_BN_gamma_1, h_BN_beta_1, h_BN_rm_1, h_BN_rv_1, h_BN_rv_gamma_1;
+Array<half, 20, 1> h_b2, h_BN_gamma_2, h_BN_beta_2, h_BN_rm_2, h_BN_rv_2, h_BN_rv_gamma_2;
 Array<half, 49, 1> h_bout;
-Array<half, 9, 1> h_BN_gamma_in, h_BN_beta_in, h_BN_rm_in, h_BN_rv_in;
+// Array<half, 9, 1> h_BN_gamma_in, h_BN_beta_in, h_BN_rm_in, h_BN_rv_in;
 
 /* ReLU function
 ReLU is achieved in Eigen by using the following code:
@@ -123,20 +123,23 @@ void NN_pred(){
   }
 
   // Input Layer
-  IN_errors = (((IN_errors - BN_rm_in) / BN_rv_in.sqrt()) * BN_gamma_in) + BN_beta_in;
+  // IN_errors = (((IN_errors - BN_rm_in) / BN_rv_in.sqrt()) * BN_gamma_in) + BN_beta_in;
+  IN_errors = ((IN_errors - BN_rm_in) * BN_rv_gamma_in) + BN_beta_in;
   IN << IN_embs0, IN_embs1, IN_errors;
   h_IN = IN.template cast<half>();
 
   // First Hidden Layer
   X1 = h_in_h1 * h_IN.matrix();
   X1 = X1 + h_b1;
-  X1 = (((((X1.array() < (half)0).select((half)0, X1)) - h_BN_rm_1) / h_BN_rv_1.sqrt()) * h_BN_gamma_1) + h_BN_beta_1;
+  // X1 = (((((X1.array() < (half)0).select((half)0, X1)) - h_BN_rm_1) / h_BN_rv_1.sqrt()) * h_BN_gamma_1) + h_BN_beta_1;
+  X1 = ((((X1.array() < (half)0).select((half)0, X1)) - h_BN_rm_1) * h_BN_rv_gamma_1) + h_BN_beta_1;
 
   // Second Hidden Layer
   X2 = h_h1_h2 * X1.matrix();
   X2 = X2 + h_b2;
-  X2 = (((((X2.array() < (half)0).select((half)0, X2)) - h_BN_rm_2) / h_BN_rv_2.sqrt()) * h_BN_gamma_2) + h_BN_beta_2;
-
+  // X2 = (((((X2.array() < (half)0).select((half)0, X2)) - h_BN_rm_2) / h_BN_rv_2.sqrt()) * h_BN_gamma_2) + h_BN_beta_2;
+  X2 = ((((X2.array() < (half)0).select((half)0, X2)) - h_BN_rm_2) * h_BN_rv_gamma_2) + h_BN_beta_2;
+  
   // OUTPUT LAYER
   OUT = h_h2_out * X2.matrix();
   OUT = OUT + h_bout;
@@ -597,7 +600,7 @@ Void TEncSearch::init(TEncCfg*       pcEncCfg,
 			-0.078125,-1.2089844,1.03125,-0.6225586,-0.6323242,-0.5463867,0.047607422,-0.25097656,-0.6098633,0.4633789,-0.32592773,0.6303711,0.7524414,0.6875,-1.6533203,-1.7373047,-0.50927734,0.074157715,0.26367188,-0.9116211,
 			0.1348877,-0.47802734,1.484375,-0.47558594,-0.80810547,-0.32592773,-0.28320312,-0.32592773,-0.56884766,0.57470703,-0.3395996,0.07116699,0.5307617,1.7412109,-2.6289062,-3.7871094,-0.2602539,0.034332275,0.3005371,-0.77734375,
 			-0.91308594,0.009376526,-0.06628418,0.8574219,-0.80371094,1.4160156,-0.3828125,-0.7548828,-0.6347656,-1.3574219,-0.68896484,-0.57666016,-0.6694336,2.0820312,0.3305664,-3.8417969,0.8911133,-0.3918457,-0.42260742,-0.38208008,
-			-1.1767578,-1.9848347e-05,-0.38085938,1.0595703,-0.0070724487,1.1767578,0.055999756,-1.0048828,-0.65625,-1.546875,-0.26831055,-0.35766602,-0.55126953,0.77246094,0.42456055,-1.3476562,0.3996582,-0.24694824,-1.171875,-0.4038086,
+			-1.1767578,0.0,-0.38085938,1.0595703,-0.0070724487,1.1767578,0.055999756,-1.0048828,-0.65625,-1.546875,-0.26831055,-0.35766602,-0.55126953,0.77246094,0.42456055,-1.3476562,0.3996582,-0.24694824,-1.171875,-0.4038086,
 			-1.8095703,-0.81103516,-0.47094727,0.82910156,0.32348633,0.6152344,0.79248047,-0.7084961,-0.53027344,-1.5146484,-0.42016602,0.15515137,-0.18969727,-0.35180664,0.30297852,-0.20007324,-0.075805664,-0.97509766,-0.92089844,-0.7553711,
 			-2.28125,-1.3603516,-0.30737305,0.38452148,0.5708008,-0.2644043,1.2412109,-0.39038086,0.15307617,-1.0117188,-0.5258789,0.5839844,0.23693848,-0.4494629,-0.5048828,0.20129395,-0.18469238,-1.1962891,-0.8178711,-0.7138672,
 			-1.6884766,-1.2421875,0.1126709,-0.115112305,0.44702148,-0.6591797,0.9008789,-0.6850586,-0.43969727,-0.30688477,-0.39819336,0.5390625,0.7314453,-0.36523438,-1.4277344,-0.15771484,-0.18981934,-1.0244141,-0.5073242,-1.0039062,
@@ -651,7 +654,7 @@ Void TEncSearch::init(TEncCfg*       pcEncCfg,
 			0.84193116, 0.6595461, 0.7192391, 0.7996712, 0.5811185, 0.7429943, 0.7244822, 0.62585115, 0.7168931;
 
     BN_rv_1 <<
-			0.008670716, 0.052162252, 0.46031475, 0.6010789, 0.10599371, 0.1612644, 0.11789928, 0.01053795, 0.050819647, 0.0073129865, 0.0805798, 0.0001, 0.01921488, 0.036940027, 0.013798133, 0.023123555, 0.07894679, 0.016564902, 0.027107041, 0.051886093, 0.011580137, 0.10343783;
+			0.008670716, 0.052162252, 0.46031475, 0.6010789, 0.10599371, 0.1612644, 0.11789928, 0.01053795, 0.050819647, 0.0073129865, 0.0805798, 0.1, 0.01921488, 0.036940027, 0.013798133, 0.023123555, 0.07894679, 0.016564902, 0.027107041, 0.051886093, 0.011580137, 0.10343783;
 
     BN_rv_2 <<
 			0.11833968, 0.08310373, 0.0046789325, 0.08051278, 0.06949604, 0.0072373394, 0.0103102205, 0.04390014, 0.0034247453, 0.048179775, 0.007656457, 0.060601197, 0.06996356, 0.50779116, 0.1739267, 0.30252776, 0.007774848, 0.13423772, 0.345382, 0.06831863;
@@ -662,6 +665,14 @@ Void TEncSearch::init(TEncCfg*       pcEncCfg,
     stdev <<
 			193967.56930305887,134635.73364223444,176284.26828582658,165337.0718462883,99783.79549126323,163590.9894714722,177009.71902279663,133070.12104034834,191871.89456240606;
 
+    BN_rv_gamma_in <<
+      0.94970423, 1.2763803, 1.0089202, 1.1538303, 1.7164983, 1.3810297, 1.0436656, 1.261963, 0.97813284;
+    
+    BN_rv_gamma_1 <<
+      4.554268, 2.1316655, 0.70481926, 0.87346375, 1.723822, 1.5787582, 1.4151984, 3.7859704, 1.9094374, 4.770363, 1.8117113, 3.35703, 3.0799217, 2.3139422, 3.424242, 2.6268435, 2.0789702, 3.3541813, 2.4767709, 2.1692457, 4.3181734, 1.4921062;
+    
+    BN_rv_gamma_2 <<
+      2.729331, 4.5303006, 13.741314, 5.3825154, 5.6878076, 9.084139, 7.9842334, 6.800483, 14.666312, 7.2691207, 9.566869, 5.7815723, 5.696378, 1.8135986, 3.3981752, 2.116183, 10.1868, 3.3449674, 2.5014021, 5.9345374;
   }
   
   // EMI: Cast all Trainable parameters to Half Precision
@@ -671,20 +682,17 @@ Void TEncSearch::init(TEncCfg*       pcEncCfg,
   h_h2_out = h2_out.template cast<half>();
   h_b1 = b1.template cast<half>();
   h_b2 = b2.template cast<half>();
-  h_BN_gamma_in = BN_gamma_in.template cast<half>();
   h_BN_gamma_1 = BN_gamma_1.template cast<half>();
   h_BN_gamma_2 = BN_gamma_2.template cast<half>();
-  h_BN_beta_in = BN_beta_in.template cast<half>();
   h_BN_beta_1 = BN_beta_1.template cast<half>();
   h_BN_beta_2 = BN_beta_2.template cast<half>();
-  h_BN_rm_in = BN_rm_in.template cast<half>();
   h_BN_rm_1 = BN_rm_1.template cast<half>();
   h_BN_rm_2 = BN_rm_2.template cast<half>();
-  h_BN_rv_in = BN_rv_in.template cast<half>();
   h_BN_rv_1 = BN_rv_1.template cast<half>();
   h_BN_rv_2 = BN_rv_2.template cast<half>();
   h_bout = bout.template cast<half>();
-  
+  h_BN_rv_gamma_1 = h_BN_gamma_1 / h_BN_rv_1.sqrt();
+  h_BN_rv_gamma_2 = BN_rv_gamma_2.template cast<half>();
 }
 
 
