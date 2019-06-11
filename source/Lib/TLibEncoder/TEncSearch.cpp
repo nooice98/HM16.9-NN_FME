@@ -57,7 +57,7 @@ std::vector<uint> array_e;
 uint PUHeight, PUWidth, C;
 
 // Used to store index of Maximum element of Output layer
-MatrixXf::Index NN_out, maxCol;
+MatrixXf::Index NN_out;
 
 /*
 The next set of variables are part of Eigen library for Matrix and Array manipulations
@@ -65,7 +65,7 @@ The "Array" object arithmetic performs element-wise operations, hence will be us
 The "Matrix" object arithmetic performs matrix operations, hence it's used mainly for weight multiplications
 We can transform to Array or to Matrix using .array() and .matrix()
 */
-Array<float, 22, 1> X1; Array<float, 20, 1> X2; Array<float, 49, 1> OUT;
+// Array<float, 22, 1> X1; Array<float, 20, 1> X2; Array<float, 49, 1> OUT;
 Array<float, 4, 1> IN_embs0, IN_embs1; Array<float, 17, 1> IN;
 Array<float, 8, 4> embs0, embs1;
 Matrix<float, 22, 17> in_h1;
@@ -75,6 +75,15 @@ Array<float, 22, 1> b1, BN_gamma_1, BN_beta_1;
 Array<float, 20, 1> b2, BN_gamma_2, BN_beta_2;
 Array<float, 49, 1> bout;
 Array<float, 9, 1> IN_errors, BN_gamma_in, mean, stdev;
+
+Array<half, 22, 1> X1; Array<half, 20, 1> X2; Array<half, 49, 1> OUT;
+Array<half, 17, 1> h_IN;
+Matrix<half, 22, 17> h_in_h1;
+Matrix<half, 20, 22> h_h1_h2;
+Matrix<half, 49, 20> h_h2_out;
+Array<half, 22, 1> h_b1, h_BN_gamma_1, h_BN_beta_1;
+Array<half, 20, 1> h_b2, h_BN_gamma_2, h_BN_beta_2;
+Array<half, 49, 1> h_bout;
 
 /* ReLU function
 ReLU is achieved in Eigen by using the following code:
@@ -115,23 +124,24 @@ void NN_pred(){
   // Input Layer
   IN_errors = IN_errors * BN_gamma_in;
   IN << IN_embs0, IN_embs1, IN_errors;
+  h_IN = IN.template cast<half>();
 
   // First Hidden Layer
-  X1 = in_h1 * IN.matrix();
-  X1 = X1 + b1;
-  X1 = (((X1.array() < 0).select(0, X1)) * BN_gamma_1) + BN_beta_1;
+  X1 = h_in_h1 * h_IN.matrix();
+  X1 = X1 + h_b1;
+  X1 = (((X1.array() < (half)0).select((half)0, X1)) * h_BN_gamma_1) + h_BN_beta_1;
   
   // Second Hidden Layer
-  X2 = h1_h2 * X1.matrix();
-  X2 = X2 + b2;
-  X2 = (((X2.array() < 0).select(0, X2)) * BN_gamma_2) + BN_beta_2;
+  X2 = h_h1_h2 * X1.matrix();
+  X2 = X2 + h_b2;
+  X2 = (((X2.array() < (half)0).select((half)0, X2)) * h_BN_gamma_2) + h_BN_beta_2;
   
   // OUTPUT LAYER
-  OUT = h2_out * X2.matrix();
-  OUT = OUT + bout;
+  OUT = h_h2_out * X2.matrix();
+  OUT = OUT + h_bout;
     
   // Decision: NN_out holds the index of the maximum element
-  OUT.maxCoeff(&NN_out, &maxCol);
+  OUT.maxCoeff(&NN_out);
   
   switch (NN_out) {
     case 0: MVX_HALF = -1;  MVX_QRTER = -1;		MVY_HALF = -1;  MVY_QRTER = -1;		break;
@@ -196,7 +206,7 @@ void NN_pred(){
   Reset all values of arrays
   For Eigen library objects, reset is done by using object method .setZero()
   */
-  IN_embs0.setZero(); IN_embs1.setZero(); IN_errors.setZero(); IN.setZero();
+  IN_embs0.setZero(); IN_embs1.setZero(); IN_errors.setZero(); IN.setZero(); h_IN.setZero();
   X1.setZero(); X2.setZero(); OUT.setZero();
   array_e.clear();
   // NN_out = 0;
@@ -1072,6 +1082,17 @@ Void TEncSearch::init(TEncCfg*       pcEncCfg,
       209719.99252336434,156429.86517925534,193617.6018444604,183553.46721868264,127286.93783731306,182093.47999310683,194486.93364851017,155514.52171421162,208118.4647262227;
   }
   
+  h_in_h1 = in_h1.template cast<half>();
+  h_h1_h2 = h1_h2.template cast<half>();
+  h_h2_out = h2_out.template cast<half>();
+  h_b1 = b1.template cast<half>();
+  h_b2 = b2.template cast<half>();
+  h_BN_gamma_1 = BN_gamma_1.template cast<half>();
+  h_BN_gamma_2 = BN_gamma_2.template cast<half>();
+  h_BN_beta_1 = BN_beta_1.template cast<half>();
+  h_BN_beta_2 = BN_beta_2.template cast<half>();
+  h_bout = bout.template cast<half>();
+
 }
 
 
