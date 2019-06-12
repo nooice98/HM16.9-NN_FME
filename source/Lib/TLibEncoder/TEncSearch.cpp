@@ -38,6 +38,8 @@
 // Eigen Library has to be included first, or I'll get errors using namespace Eigen
 #include <eigen3/Eigen/Dense>
 using namespace Eigen;
+#include <cnl/fixed_point.h>
+using cnl::fixed_point;
 
 #include "TLibCommon/CommonDef.h"
 #include "TLibCommon/TComRom.h"
@@ -57,7 +59,7 @@ std::vector<uint> array_e;
 uint PUHeight, PUWidth, C;
 
 // Used to store index of Maximum element of Output layer
-MatrixXf::Index NN_out, maxCol;
+MatrixXf::Index NN_out;
 
 /*
 The next set of variables are part of Eigen library for Matrix and Array manipulations
@@ -65,16 +67,22 @@ The "Array" object arithmetic performs element-wise operations, hence will be us
 The "Matrix" object arithmetic performs matrix operations, hence it's used mainly for weight multiplications
 We can transform to Array or to Matrix using .array() and .matrix()
 */
-Array<float, 22, 1> X1; Array<float, 20, 1> X2; Array<float, 49, 1> OUT;
-Array<float, 4, 1> IN_embs0, IN_embs1; Array<float, 17, 1> IN;
-Array<float, 8, 4> embs0, embs1;
-Matrix<float, 22, 17> in_h1;
-Matrix<float, 20, 22> h1_h2;
-Matrix<float, 49, 20> h2_out;
-Array<float, 22, 1> b1, BN_gamma_1, BN_beta_1;
-Array<float, 20, 1> b2, BN_gamma_2, BN_beta_2;
-Array<float, 49, 1> bout;
-Array<float, 9, 1> IN_errors, BN_gamma_in, mean, stdev;
+Array<fixed_point<int16_t, -11>, 22, 1> X1; Array<fixed_point<int16_t, -11>, 20, 1> X2; Array<fixed_point<int16_t, -11>, 49, 1> OUT;
+Array<fixed_point<int16_t, -11>, 4, 1> IN_embs0, IN_embs1; Array<fixed_point<int16_t, -11>, 17, 1> IN;
+Array<fixed_point<int16_t, -11>, 8, 4> embs0, embs1;
+Matrix<fixed_point<int16_t, -11>, 22, 17> in_h1;
+Matrix<fixed_point<int16_t, -11>, 20, 22> h1_h2;
+Matrix<fixed_point<int16_t, -11>, 49, 20> h2_out;
+Array<fixed_point<int16_t, -11>, 22, 1> b1, BN_gamma_1, BN_beta_1;
+Array<fixed_point<int16_t, -11>, 20, 1> b2, BN_gamma_2, BN_beta_2;
+Array<fixed_point<int16_t, -11>, 49, 1> bout;
+Array<fixed_point<int16_t, -11>, 9, 1> fixed_IN_errors, BN_gamma_in;
+Array<float, 9, 1> IN_errors, mean, stdev;
+
+fixed_point<int16_t, -11> relu(fixed_point<int16_t, -11> x){
+	if (x>0)	{	return x; }
+	else { return 0; }
+}
 
 /* ReLU function
 ReLU is achieved in Eigen by using the following code:
@@ -87,7 +95,9 @@ void NN_pred(){
   // Normalize input values using the computed mean and standard deviations
   IN_errors << array_e[0], array_e[1], array_e[2], array_e[3], C, array_e[4], array_e[5], array_e[6], array_e[7];
   IN_errors = (IN_errors - mean) / stdev;
-
+  fixed_IN_errors << IN_errors[0], IN_errors[1], IN_errors[2], IN_errors[3], IN_errors[4], IN_errors[5], IN_errors[6], IN_errors[7], IN_errors[8];
+  // cout << fixed_IN_errors << endl << endl;
+  
   // Input layer also consists of categorical variables, in which we will use embedding matrices depending on block Height and Width
 
   switch (PUHeight) {
@@ -113,25 +123,43 @@ void NN_pred(){
   }
 
   // Input Layer
-  IN_errors = IN_errors * BN_gamma_in;
-  IN << IN_embs0, IN_embs1, IN_errors;
+  fixed_IN_errors = fixed_IN_errors * BN_gamma_in;
+  IN << IN_embs0, IN_embs1, fixed_IN_errors;
 
   // First Hidden Layer
-  X1 = in_h1 * IN.matrix();
+  // X1 = in_h1 * IN.matrix();
+  for(int i=0; i<22; i++){
+    for(int j=0; j<17; j++){
+      X1(i) += (in_h1(i,j) * IN(j));
+    }
+  } 
   X1 = X1 + b1;
   X1 = (((X1.array() < 0).select(0, X1)) * BN_gamma_1) + BN_beta_1;
-  
+  // cout << X1 << endl << endl;
+
   // Second Hidden Layer
-  X2 = h1_h2 * X1.matrix();
+  // X2 = h1_h2 * X1.matrix();
+  for(int i=0; i<20; i++){
+    for(int j=0; j<22; j++){
+      X2(i) += (h1_h2(i,j) * X1(j));
+    }
+  }
   X2 = X2 + b2;
   X2 = (((X2.array() < 0).select(0, X2)) * BN_gamma_2) + BN_beta_2;
-  
+  // cout << X2 << endl << endl;
+
   // OUTPUT LAYER
-  OUT = h2_out * X2.matrix();
+  // OUT = h2_out * X2.matrix();
+  for(int i=0; i<49; i++){
+    for(int j=0; j<20; j++){
+      OUT(i) += (h2_out(i,j) * X2(j));
+    }
+  }
   OUT = OUT + bout;
-    
+  // cout << OUT << endl << endl;
+
   // Decision: NN_out holds the index of the maximum element
-  OUT.maxCoeff(&NN_out, &maxCol);
+  OUT.maxCoeff(&NN_out);
   
   switch (NN_out) {
     case 0: MVX_HALF = -1;  MVX_QRTER = -1;		MVY_HALF = -1;  MVY_QRTER = -1;		break;
@@ -1070,6 +1098,9 @@ Void TEncSearch::init(TEncCfg*       pcEncCfg,
 
     stdev <<
       209719.99252336434,156429.86517925534,193617.6018444604,183553.46721868264,127286.93783731306,182093.47999310683,194486.93364851017,155514.52171421162,208118.4647262227;
+  
+    // inv_stdev <<
+    //   4.76826262e-06, 6.39264119e-06, 5.16481968e-06, 5.44800387e-06, 7.85626567e-06, 5.49168482e-06, 5.14173359e-06, 6.43026766e-06, 4.80495568e-06;
   }
   
 }
