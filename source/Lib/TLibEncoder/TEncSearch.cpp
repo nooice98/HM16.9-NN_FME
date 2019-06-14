@@ -67,16 +67,16 @@ The "Array" object arithmetic performs element-wise operations, hence will be us
 The "Matrix" object arithmetic performs matrix operations, hence it's used mainly for weight multiplications
 We can transform to Array or to Matrix using .array() and .matrix()
 */
-Array<fixed_point<int32_t, -12>, 22, 1> X1; Array<fixed_point<int32_t, -12>, 20, 1> X2; Array<fixed_point<int32_t, -12>, 49, 1> OUT;
-Array<fixed_point<int32_t, -12>, 4, 1> IN_embs0, IN_embs1; Array<fixed_point<int32_t, -12>, 17, 1> IN;
-Array<fixed_point<int32_t, -12>, 8, 4> embs0, embs1;
-Matrix<fixed_point<int32_t, -12>, 22, 17> in_h1;
-Matrix<fixed_point<int32_t, -12>, 20, 22> h1_h2;
-Matrix<fixed_point<int32_t, -12>, 49, 20> h2_out;
-Array<fixed_point<int32_t, -12>, 22, 1> b1, BN_gamma_1, BN_beta_1;
-Array<fixed_point<int32_t, -12>, 20, 1> b2, BN_gamma_2, BN_beta_2;
-Array<fixed_point<int32_t, -12>, 49, 1> bout;
-Array<fixed_point<int32_t, -12>, 9, 1> fixed_IN_errors, BN_gamma_in;
+Array<fixed_point<int32_t, -11>, 22, 1> X1; Array<fixed_point<int32_t, -11>, 20, 1> X2; Array<fixed_point<int32_t, -11>, 49, 1> OUT;
+Array<fixed_point<int32_t, -11>, 4, 1> IN_embs0, IN_embs1; Array<fixed_point<int32_t, -11>, 17, 1> IN;
+Array<fixed_point<int32_t, -11>, 8, 4> embs0, embs1;
+Matrix<fixed_point<int32_t, -11>, 22, 17> in_h1;
+Matrix<fixed_point<int32_t, -11>, 20, 22> h1_h2;
+Matrix<fixed_point<int32_t, -11>, 49, 20> h2_out;
+Array<fixed_point<int32_t, -11>, 22, 1> b1, BN_gamma_1, BN_beta_1;
+Array<fixed_point<int32_t, -11>, 20, 1> b2, BN_gamma_2, BN_beta_2;
+Array<fixed_point<int32_t, -11>, 49, 1> bout;
+Array<fixed_point<int32_t, -11>, 9, 1> fixed_IN_errors, BN_gamma_in;
 Array<float, 9, 1> IN_errors, mean, stdev;
 
 /* ReLU function
