@@ -1,7 +1,7 @@
 #!/bin/bash
 
-QPs=(22 27 32 37)
-Dir=blowing
+QPs=(32 37)
+Dir=blowing40
 
 for qp in "${QPs[@]}";
 do
