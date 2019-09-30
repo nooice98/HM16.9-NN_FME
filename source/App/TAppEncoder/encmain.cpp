@@ -103,7 +103,7 @@ int main(int argc, char* argv[])
 
   // destroy application encoder class
   cTAppEncTop.destroy();
-  getchar();
+  // getchar();
   return 0;
 }
 

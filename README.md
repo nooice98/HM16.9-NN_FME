@@ -67,7 +67,29 @@ To extract the Dataset:
    in ./DL/ directory, just modify the video's name and quantization parameters
 
 ## Profiling
-Profiling was performed using Valgrind's callgrind tool. Just run the encoder binary using valgrind. No extra 
+There are a lot of profiling tools that can be used. In the paper, we've profiled the program using Google's CPU Profiler (GPerfTools), but other profilers (e.g. Valgrind) 
+can be used as well.
+
+### GPerfTools
+Google's CPU profiler operate by interrupting the program at a given sampling frequency, and by counting the number of samples spent in each of the functions. 
+In order to run the profiler at run-time, we can pre-append `env LD_PRELOAD=/usr/lib/libprofiler.so` before the binary. 
+To set the path for the output file, we can use `env CPUPROFILE=$PATH_TO_OUTPUT`. The sampling frequency can be set using `CPUPROFILE_FREQUENCY=x` samples per second. More info can be found in [GPerfTools Documentation](https://gperftools.github.io/gperftools/cpuprofile.html).  
+So, to run GPerfTools for BlowingBubbles sequence with sampling frequency of 1000:
+```
+env LD_PRELOAD=/usr/lib/libprofiler.so env CPUPROFILE=$PATH_TO_OUTPUT/BlowingBubbles22.prof CPUPROFILE_FREQUENCY=1000 ./TAppEncoderStatic -c ../cfg/encoder_lowdelay_P_main.cfg -c ../cfg/per-sequence/BlowingBubbles.cfg -q 22
+```
+A very nice tool to visualize the profiling results is KCacheGrind. In order to transform the output file to a format that can be opened using KCacheGrind, 
+we can run: 
+```
+pprof --callgrind $PATH_TO_HM/bin/TAppEncoderStatic $PATH_TO_OUTPUT/BlowingBubbles22.prof > callgrind.out.BlowingBubbles22
+```
+Which in turn can be opened using 
+```
+kcachegrind callgrind.out.BlowingBubbles22
+```
+
+### Valgrind
+Profiling can also be performed using Valgrind's callgrind tool. Just run the encoder binary using valgrind. No extra 
 flags are needed. 
 ```
 cd ./bin  
@@ -79,4 +101,8 @@ using KCacheGrind:
 kcachegrind callgrind.out.XXX
 ```
 We're mainly concerned with the absolute number of clock cycles for our ANN "NN_pred()", the standard FME 
-"xPatternSearchFracDIF()", and the whole encoder "total"  
+"xPatternSearchFracDIF()", and the whole encoder "total".
+
+## Two vs. Three Layered Network
+The master branch of this repo represents our results of implementing the two-layered ANN. To switch to our results for the three-layered ANN, 
+you can switch to the "blowing40" branch. 
